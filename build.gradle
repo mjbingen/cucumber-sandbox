@@ -1,0 +1,48 @@
+plugins {
+    id 'application'
+}
+
+application {
+    mainClassName = "com.foo.RunCukes"
+}
+
+dependencies {
+    implementation 'junit:junit:4.12'
+    implementation 'io.cucumber:cucumber-java:6.8.1'
+    implementation 'io.cucumber:cucumber-java8:6.8.1'
+}
+
+repositories {
+    mavenCentral()
+}
+
+// Cannot directly access the implementation configuration, so extend it for use in creating jar and running cucumber
+configurations {
+    cucumberRuntime {
+        extendsFrom implementation
+    }
+}
+
+// Fat jar, with all cucumber implementation dependencies added
+task fatJar(type: Jar) {
+    manifest {
+        attributes "Main-Class": "com.foo.RunCukes"
+    }
+    archiveFileName = 'run-cukes.jar'
+    from {
+        configurations.cucumberRuntime.collect {it.isDirectory() ? it : zipTree(it) }
+    }
+    from sourceSets.main.output
+    with jar
+}
+
+// Task to run cucumber, implementation configuration plus main sources are added to class path
+task cucumber() {
+    dependsOn assemble, testClasses
+    doLast {
+        javaexec {
+            main = "com.foo.RunCukes"
+            classpath = configurations.cucumberRuntime + sourceSets.main.output
+        }
+    }
+}
